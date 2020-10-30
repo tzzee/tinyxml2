@@ -23,6 +23,7 @@ distribution.
 
 #include "tinyxml2.h"
 
+#if !defined(ARDUINO)
 #include <new>		// yes, this one new style header, is in the Android SDK.
 #if defined(ANDROID_NDK) || defined(__BORLANDC__) || defined(__QNXNTO__)
 #   include <stddef.h>
@@ -30,6 +31,7 @@ distribution.
 #else
 #   include <cstddef>
 #   include <cstdarg>
+#endif
 #endif
 
 #if defined(_MSC_VER) && (_MSC_VER >= 1400 ) && (!defined WINCE)
@@ -2434,7 +2436,11 @@ void XMLDocument::SetError( XMLError error, int lineNum, const char* format, ...
     _errorLineNum = lineNum;
 	_errorStr.Reset();
 
+#ifdef ARDUINO
+    const size_t BUFFER_SIZE = 200;
+#else
     const size_t BUFFER_SIZE = 1000;
+#endif
     char* buffer = new char[BUFFER_SIZE];
 
     TIXMLASSERT(sizeof(error) <= sizeof(int));

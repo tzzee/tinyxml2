@@ -24,6 +24,9 @@ distribution.
 #ifndef TINYXML2_INCLUDED
 #define TINYXML2_INCLUDED
 
+#if defined(ARDUINO)
+#include <Arduino.h>
+#else
 #if defined(ANDROID_NDK) || defined(__BORLANDC__) || defined(__QNXNTO__)
 #   include <ctype.h>
 #   include <limits.h>
@@ -42,6 +45,7 @@ distribution.
 #endif
 #include <stdint.h>
 #include <new>
+#endif
 
 /*
    TODO: intern strings instead of allocation.
@@ -305,7 +309,11 @@ private:
         TIXMLASSERT( cap > 0 );
         if ( cap > _allocated ) {
             TIXMLASSERT( cap <= INT_MAX / 2 );
+#ifdef ARDUINO
+            const int newAllocated = cap;
+#else
             const int newAllocated = cap * 2;
+#endif
             T* newMem = (T*)realloc((void*)_mem, newAllocated * sizeof(T));
             TIXMLASSERT( newMem );
             for( int i = _allocated; i < newAllocated; ++i ) {
@@ -435,7 +443,11 @@ public:
 	//		64k:	4000	21000
     // Declared public because some compilers do not accept to use ITEMS_PER_BLOCK
     // in private part if ITEMS_PER_BLOCK is private
+#ifdef ARDUINO
+    enum { ITEMS_PER_BLOCK = 1 };
+#else
     enum { ITEMS_PER_BLOCK = (4 * 1024) / ITEM_SIZE };
+#endif
 
 private:
     MemPoolT( const MemPoolT& ); // not supported
