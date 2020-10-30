@@ -2244,6 +2244,7 @@ public:
     	with only required whitespace and newlines.
     */
     XMLPrinter( FILE* file=0, bool compact = false, int depth = 0 );
+    XMLPrinter( void (*setcFunc)(char, void*), void* arg = NULL, bool compact = false, int depth = 0 );
     virtual ~XMLPrinter()	{}
 
     /** If streaming, write the BOM and declaration. */
@@ -2351,6 +2352,8 @@ private:
 
     bool _firstElement;
     FILE* _fp;
+    void (*_setcFunc)(char, void*);
+    void *_arg;
     int _depth;
     int _textDepth;
     bool _processEntities;

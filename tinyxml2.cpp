@@ -2514,6 +2514,8 @@ XMLPrinter::XMLPrinter( FILE* file, bool compact, int depth ) :
     _stack(),
     _firstElement( true ),
     _fp( file ),
+    _setcFunc( NULL ),
+    _arg( NULL ),
     _depth( depth ),
     _textDepth( -1 ),
     _processEntities( true ),
@@ -2536,6 +2538,34 @@ XMLPrinter::XMLPrinter( FILE* file, bool compact, int depth ) :
     _buffer.Push( 0 );
 }
 
+XMLPrinter::XMLPrinter( void (*setcFunc)(char, void*), void* arg, bool compact, int depth ) :
+    _elementJustOpened( false ),
+    _stack(),
+    _firstElement( true ),
+    _fp( NULL ),
+    _setcFunc( setcFunc ),
+    _arg( arg ),
+    _depth( depth ),
+    _textDepth( -1 ),
+    _processEntities( true ),
+    _compactMode( compact ),
+    _buffer()
+{
+    for( int i=0; i<ENTITY_RANGE; ++i ) {
+        _entityFlag[i] = false;
+        _restrictedEntityFlag[i] = false;
+    }
+    for( int i=0; i<NUM_ENTITIES; ++i ) {
+        const char entityValue = entities[i].value;
+        const unsigned char flagIndex = static_cast<unsigned char>(entityValue);
+        TIXMLASSERT( flagIndex < ENTITY_RANGE );
+        _entityFlag[flagIndex] = true;
+    }
+    _restrictedEntityFlag[static_cast<unsigned char>('&')] = true;
+    _restrictedEntityFlag[static_cast<unsigned char>('<')] = true;
+    _restrictedEntityFlag[static_cast<unsigned char>('>')] = true;	// not required, but consistency is nice
+    _buffer.Push( 0 );
+}
 
 void XMLPrinter::Print( const char* format, ... )
 {
@@ -2544,6 +2574,13 @@ void XMLPrinter::Print( const char* format, ... )
 
     if ( _fp ) {
         vfprintf( _fp, format, va );
+    }
+    else if ( _setcFunc ) {
+        char buf[BUF_SIZE];
+        int size = vsnprintf(buf, sizeof(buf), format, va);
+        for( int i=0; i<size; ++i ) {
+            _setcFunc( buf[i], _arg );
+	}
     }
     else {
         const int len = TIXML_VSCPRINTF( format, va );
@@ -2564,6 +2601,11 @@ void XMLPrinter::Write( const char* data, size_t size )
     if ( _fp ) {
         fwrite ( data , sizeof(char), size, _fp);
     }
+    else if ( _setcFunc ) {
+        for( int i=0; i<size; ++i ) {
+            _setcFunc( data[i], _arg );
+	}
+    }
     else {
         char* p = _buffer.PushArr( static_cast<int>(size) ) - 1;   // back up over the null terminator.
         memcpy( p, data, size );
@@ -2576,6 +2618,9 @@ void XMLPrinter::Putc( char ch )
 {
     if ( _fp ) {
         fputc ( ch, _fp);
+    }
+    else if ( _setcFunc ) {
+        _setcFunc( ch, _arg );
     }
     else {
         char* p = _buffer.PushArr( sizeof(char) ) - 1;   // back up over the null terminator.
