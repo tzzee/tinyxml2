@@ -41,6 +41,7 @@ distribution.
 #   include <cstring>
 #endif
 #include <stdint.h>
+#include <new>
 
 /*
    TODO: intern strings instead of allocation.
@@ -206,16 +207,17 @@ class DynArray
 {
 public:
     DynArray() :
-        _mem( _pool ),
+        _mem( new T[INITIAL_SIZE] ),
         _allocated( INITIAL_SIZE ),
         _size( 0 )
     {
     }
 
     ~DynArray() {
-        if ( _mem != _pool ) {
-            delete [] _mem;
+        for( int i = 0; i < _allocated; ++i ) {
+          _mem[i].~T();
         }
+        free(_mem);
     }
 
     void Clear() {
@@ -304,19 +306,18 @@ private:
         if ( cap > _allocated ) {
             TIXMLASSERT( cap <= INT_MAX / 2 );
             const int newAllocated = cap * 2;
-            T* newMem = new T[newAllocated];
-            TIXMLASSERT( newAllocated >= _size );
-            memcpy( newMem, _mem, sizeof(T)*_size );	// warning: not using constructors, only works for PODs
-            if ( _mem != _pool ) {
-                delete [] _mem;
+            T* newMem = (T*)realloc((void*)_mem, newAllocated * sizeof(T));
+            TIXMLASSERT( newMem );
+            for( int i = _allocated; i < newAllocated; ++i ) {
+                new (&newMem[i]) T;
             }
+            TIXMLASSERT( newAllocated >= _size );
             _mem = newMem;
             _allocated = newAllocated;
         }
     }
 
     T*  _mem;
-    T   _pool[INITIAL_SIZE];
     int _allocated;		// objects allocated
     int _size;			// number objects in use
 };
